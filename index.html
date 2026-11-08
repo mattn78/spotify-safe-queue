@@ -2,38 +2,36 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Safe Queue Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: desktop = scenario notes beside a phone frame; phone = the app fills the screen with notes below */
 :root{
-  --ink:#0f1115; --panel:#171a21; --row:#1d212a; --row-hi:#262b36; --line:#2c3240;
-  --txt:#f2f3f5; --mute:#9aa1b2; --dim:#5d6476;
-  --accent:#ff8a4c; --accent-ink:#1b0f08; --warn:#ffcf5c;
-  --page:#e9e6e1; --page-txt:#24262b; --page-mute:#5f6370; --card:#ffffff;
-  --f-ui:"Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --np1:#3a2a4a; --f-mono:"DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ink:#212121; --panel:#212121; --row:#2a2a2a; --row-hi:#333333; --line:#363636;
+  --txt:#ffffff; --mute:#b3b3b3; --dim:#7c7c7c;
+  --accent:#1ed760; --accent-ink:#000000; --warn:#ffcf5c;
+  --page:#000000; --page-txt:#ffffff; --page-mute:#b3b3b3; --card:#181818;
+  --f-ui:"Figtree","Helvetica Neue", Helvetica, Arial, sans-serif;
+  --np1:#3a2a4a; --f-mono:var(--f-ui); color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page:#0b0c0f; --page-txt:#e7e8ec; --page-mute:#9aa1b2; --card:#14161c; color-scheme:dark } }
-:root[data-theme="dark"]{ --page:#0b0c0f; --page-txt:#e7e8ec; --page-mute:#9aa1b2; --card:#14161c; color-scheme:dark }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-ui);
   padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:24px}
-.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:40px;align-items:start}
+.wrap{max-width:900px;margin:0 auto;display:grid;grid-template-columns:390px minmax(0,1fr);gap:48px;align-items:start;justify-content:center}
 .notes{min-width:0;padding-top:12px}
-.notes h1{font-size:30px;line-height:1.1;margin:0 0 6px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.notes h1{font-size:24px;line-height:1.2;margin:0 0 6px;font-weight:700;text-wrap:balance}
 .notes .sub{color:var(--page-mute);margin:0 0 22px;font-size:15px;max-width:60ch}
-.notes h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--page-mute);margin:22px 0 8px;font-weight:700}
-.notes ol,.notes ul{margin:0;padding-left:20px;display:grid;gap:6px;font-size:15px;line-height:1.45;max-width:62ch}
+.notes p{font-size:16px;line-height:1.5;margin:0 0 10px;max-width:60ch}
+.notes ol{margin:0;padding-left:20px;display:grid;gap:8px;font-size:16px;line-height:1.45;max-width:60ch;color:var(--page-mute)}
+.notes ol b{color:var(--page-txt)}
 .notes .scen{background:var(--card);border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.5;max-width:62ch}
-.restart{margin-top:22px;font:600 14px var(--f-ui);background:transparent;color:var(--page-txt);border:1.5px solid var(--page-txt);border-radius:999px;padding:9px 18px;cursor:pointer}
+.restart{margin-top:20px;font:700 14px var(--f-ui);background:transparent;color:var(--page-txt);border:1px solid #7c7c7c;border-radius:999px;padding:8px 18px;cursor:pointer}
 .restart:focus-visible,.app button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .foot{font-size:12px;color:var(--page-mute);margin-top:18px;max-width:62ch}
 
 /* phone */
 .phone{width:100%;max-width:390px;min-width:0;height:780px;max-height:calc(100vh - 48px);min-height:620px;background:var(--ink);color:var(--txt);
-  border-radius:38px;border:10px solid #050608;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-self:end}
+  border-radius:38px;border:10px solid #2a2a2a;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-self:start}
 .app{display:flex;flex-direction:column;height:100%;position:relative}
 .app button{font-family:var(--f-ui);color:inherit}
 .top{padding:8px 18px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -44,7 +42,7 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .np-top{display:flex;align-items:center;justify-content:space-between;color:var(--mute);font-size:13px;font-weight:600}
 .np-art{width:100%;aspect-ratio:1;max-width:100%;border-radius:12px;margin:26px 0 22px;box-shadow:0 20px 40px rgba(0,0,0,.45)}
 .np-meta{display:flex;align-items:center;gap:10px}
-.np-meta .t{font-size:22px;font-weight:800}
+.np-meta .t{font-size:22px;font-weight:700}
 .np-meta .a{font-size:15px;color:var(--mute)}
 .np .bar{margin-top:18px}
 .np .ctrls{gap:26px;margin-top:14px}
@@ -61,10 +59,10 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .npicon{background:none;border:0;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:20px;color:var(--txt)}
 .npicon svg{width:24px;height:24px}
 .npicon:hover{background:var(--row-hi)}
-.liked{width:30px;height:30px;border-radius:50%;background:#3ddc84;color:#08210f;display:grid;place-items:center;flex:none;margin-left:auto}
+.liked{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#000;display:grid;place-items:center;flex:none;margin-left:auto}
 .liked svg{width:16px;height:16px}
 .np-meta .meta{flex:1;min-width:0}
-.np .np-meta .t{font-size:22px;font-weight:800;color:var(--txt)}
+.np .np-meta .t{font-size:22px;font-weight:700;color:var(--txt)}
 .np .np-meta .a{font-size:15px}
 .np .np-ctrls{justify-content:space-between;gap:0}
 .np-hint{margin:10px 0 0;text-align:center;color:var(--warn);font-size:13px;font-weight:600;min-height:18px}
@@ -74,11 +72,11 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .qbtn .dot{background:var(--warn);color:#241a00;border-radius:999px;padding:1px 8px;font-size:12px}
 .toprow{display:flex;align-items:center;gap:8px;margin-top:10px}
 .circ{width:34px;height:34px;border-radius:50%;border:0;background:var(--row-hi);font-size:16px;cursor:pointer;display:grid;place-items:center}
-.pillbtn.end{color:#ff8f8f}
+.pillbtn.end{color:var(--txt)}
 .cb.sm{width:38px;height:38px}.cb.sm svg{width:20px;height:20px}
 .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-.actbtn{background:#2a2e37;border:0;border-radius:12px;padding:12px 0 10px;font:500 13px var(--f-ui);cursor:pointer;display:grid;justify-items:center;gap:6px;color:var(--txt)}
-.actbtn:hover{background:#333844}
+.actbtn{background:#2a2a2a;border:0;border-radius:12px;padding:12px 0 10px;font:500 13px var(--f-ui);cursor:pointer;display:grid;justify-items:center;gap:6px;color:var(--txt)}
+.actbtn:hover{background:#333}
 .actbtn svg{width:22px;height:22px}
 .circ svg{width:18px;height:18px}
 .ctrls.slim{margin-top:0;gap:36px}
@@ -94,7 +92,7 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .ncplay{background:var(--txt)}.ncplay svg{fill:var(--ink)}
 .nowplay{width:34px;height:34px;border-radius:50%;background:var(--txt);color:var(--ink);display:grid;place-items:center;flex:none}
 .nowplay svg{width:16px;height:16px;margin-left:2px}
-.top h3{margin:0;font-size:20px;font-weight:800}
+.top h3{margin:0;font-size:20px;font-weight:700}
 .avs{display:flex}
 .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-ui);border:2px solid var(--panel);margin-left:-6px;color:#111}
 .avM{background:#ff9ec7}.avJ{background:#8fd3ff}.avK{background:#b9f28a}
@@ -102,14 +100,14 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .qhead b{font-size:17px;flex:1}
 .pillbtn{background:var(--row-hi);border:0;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer}
 .list{flex:1;overflow-y:auto;position:relative;padding:0 10px 12px;scroll-behavior:smooth}
-.sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:14px 8px 6px;font-weight:700;display:flex;align-items:center;gap:8px}
-.sec .hint{letter-spacing:0;text-transform:none;font-weight:500;color:var(--dim)}
+.sec{font-size:16px;color:var(--txt);padding:16px 8px 8px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+.sec .hint{font-size:13px;font-weight:400;color:var(--mute)}
 .song{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
 .song:hover{background:var(--row)}
 .art{width:42px;height:42px;border-radius:6px;flex:none}
 .meta{flex:1;min-width:0}
-.meta .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.meta .a{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .t{font-size:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .a{font-size:14px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 11px var(--f-ui);color:#111;flex:none}
 .grip{color:var(--dim);font-size:18px;width:28px;height:34px;display:grid;place-items:center;flex:none}
 .grip.draggable{cursor:grab;touch-action:none;color:var(--mute)}
@@ -153,9 +151,9 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .dbtns{display:flex;gap:10px}
 .dbtns button{flex:1;border-radius:999px;padding:11px 0;font-weight:700;font-size:15px;cursor:pointer;border:1.5px solid var(--line);background:transparent}
 .dbtns .go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.toast{position:absolute;left:12px;right:12px;bottom:168px;background:var(--txt);color:var(--ink);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;z-index:15;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.toast{position:absolute;left:12px;right:12px;bottom:168px;background:var(--txt);color:var(--ink);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:400;font-size:14px;z-index:15;box-shadow:0 10px 24px rgba(0,0,0,.4)}
 .toast span{flex:1}
-.toast button{background:none;border:0;color:#b4410b;font:800 14px var(--f-ui);cursor:pointer;padding:4px 6px}
+.toast button{background:none;border:0;color:#000;font:700 14px var(--f-ui);cursor:pointer;padding:4px 6px}
 .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--row);border-radius:18px 18px 0 0;padding:10px 10px 22px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
 .sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
 .sheet .opt{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 12px;font-size:16px;font-weight:600;border-radius:10px;cursor:pointer}
@@ -165,6 +163,45 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .sheet .std{font-weight:500;padding:11px 12px;font-size:15px}
 .sheet{max-height:85%;overflow-y:auto}
 .sheet .who-line{padding:4px 12px 10px;color:var(--mute);font-size:13px}
+
+/* --- Spotify iOS Jam queue look (from Matt's screenshots) --- */
+.top{background:var(--ink);border-bottom:1px solid var(--line);padding:8px 18px 14px}
+.top h3{font-size:23px;font-weight:700;letter-spacing:-.015em}
+.toprow{margin-top:12px}
+.circ{width:38px;height:38px;background:var(--row-hi)}
+.circ svg{width:20px;height:20px}
+.av{width:36px;height:36px;font:600 17px var(--f-ui);border:2px solid var(--ink);margin-left:-8px;color:#1a1a1a}
+.avM{background:#f573b5}.avJ{background:#7cc8ff}.avK{background:#a6e36f}
+.pillbtn{background:var(--row-hi);padding:9px 17px;font-size:15px;font-weight:700}
+.pillbtn.end{color:#f37c7c}
+.qhead{padding:16px 18px 6px;align-items:flex-start}
+.qhead .qt{flex:1;display:flex;flex-direction:column;gap:2px}
+.qhead .qt b{font-size:18px;font-weight:700}
+.qhead .qt span{font-size:15px;color:var(--mute)}.qhead .qt span em{font-style:normal;color:var(--txt)}
+.list{padding:0 18px 12px}
+.sec{font-size:15px;font-weight:400;color:var(--mute);padding:14px 0 6px;border-top:1px solid var(--line);margin-top:8px}
+.sec .hint{font-size:13px;color:var(--dim)}
+.song{gap:14px;padding:7px 0;border-radius:0}
+.song:hover{background:none}
+.art{width:52px;height:52px;border-radius:4px}
+.meta .t{font-size:17px;font-weight:400}
+.meta .a{font-size:14px;margin-top:3px;display:flex;align-items:center;gap:5px}
+.qi{width:16px;height:16px;flex:none;color:var(--accent)}
+.who{width:30px;height:30px;font:500 15px var(--f-ui);color:#1a1a1a}
+.grip{width:30px;color:var(--txt);font-size:0}
+.grip svg{width:22px;height:22px}
+.now{background:none}
+.now .t{color:var(--accent)}
+.nowplay{width:38px;height:38px}
+.skipwrap{border:0;border-radius:0;margin:0;padding:0}
+.skipwrap .sec{border-top:0;margin-top:0}
+.skipped .song{opacity:.5}
+.player{background:var(--ink);border-top:0;padding:8px 18px 16px}
+.actions{gap:8px}
+.actbtn{background:var(--row-hi);border-radius:14px;padding:14px 0 12px;font:500 14px var(--f-ui);gap:8px}
+.actbtn svg{width:24px;height:24px}
+.np{background:linear-gradient(180deg,#5a3b2a,#121212 75%)}
+.np-meta .t,.np .np-meta .t{font-size:26px;font-weight:700;letter-spacing:-.01em}
 @media (max-width:860px){
   .wrap{grid-template-columns:minmax(0,1fr);gap:24px}
   .phone{justify-self:center;order:-1}
@@ -184,22 +221,15 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
   </div>
 
   <section class="notes">
-    <h1>Safe Queue</h1>
-    <p class="sub">A clickable prototype of a shared music queue that protects songs from an accidental tap. Not a real app. Song names are examples, and nothing plays.</p>
-    <h2>Scenario</h2>
-    <div class="scen">You're in a shared queue (like Spotify Jam or Apple Music SharePlay) with two friends, J and K. Everyone has added songs. While scrolling, you accidentally tap a song near the bottom.</div>
-    <h2>Try these</h2>
+    <h1>Spotify Jam queue prototype</h1>
+    <p>You're in a Jam with J and K. Use it like a phone. Nothing actually plays.</p>
     <ol>
-      <li>Tap <b>Drip</b> at the bottom of the queue. Read the popup, then tap <b>Cancel</b>. (Tapping only the very next song plays it right away.)</li>
-      <li>Tap <b>Drip</b> again and choose <b>Skip</b>. Use <b>Undo</b> in the message that appears.</li>
-      <li>Skip to Drip once more and let the message go away. Tap the yellow <b>skipped</b> button, or scroll up, to find the skipped songs.</li>
-      <li>Use the <b>⋯</b> menu on one skipped song and choose <b>Add back to queue</b> to restore just that song.</li>
-      <li>Press <b>⏮ Previous</b> (above Mix / Shuffle) and watch skipped songs come back one at a time. (Drag the queue down by its top, or tap the handle, to see the full Now Playing screen.)</li>
-      <li>Tap a <b>Recommended</b> song. It works like any other song: you are asked first, and everything above it goes to Skipped.</li>
-      <li>Drag <b>≡</b> to reorder the queue. Long-press a song (or right-click on a computer) for more options.</li>
+      <li>Tap <b>Drip</b>, then <b>Cancel</b>.</li>
+      <li>Tap <b>Drip</b> again, choose <b>Skip</b>, then <b>Undo</b>.</li>
+      <li>Skip again and find the skipped songs (tap the yellow button).</li>
+      <li>Get a song back with <b>⋯</b>, or press <b>⏮</b>.</li>
     </ol>
-    <button class="restart" id="restart" type="button">Restart prototype</button>
-    <p class="foot">Medium-fidelity prototype for a Georgia Tech CS6750 project.</p>
+    <button class="restart" id="restart" type="button">Restart</button>
   </section>
 </div>
 
@@ -228,12 +258,14 @@ const who=w=>w?`<span class="who" style="background:${WHO[w]}">${w}</span>`:"";
 const IC={"mix": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M6 4v16M12 4v16M18 4v16\"/><circle cx=\"6\" cy=\"9\" r=\"2.2\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"2.2\" fill=\"currentColor\"/><circle cx=\"18\" cy=\"7\" r=\"2.2\" fill=\"currentColor\"/></svg>", "shuffle": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 6h3c4 0 6 12 10 12h5M3 18h3c1.6 0 2.8-1.6 3.8-3.6M14.2 9.6C15.2 7.6 16.4 6 18 6h3M18 3l3 3-3 3M18 15l3 3-3 3\"/></svg>", "repeat": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 3l3 3-3 3\"/><path d=\"M4 12V9a3 3 0 0 1 3-3h13\"/><path d=\"M7 21l-3-3 3-3\"/><path d=\"M20 12v3a3 3 0 0 1-3 3H4\"/></svg>", "add": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"><path d=\"M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8z\"/><path d=\"M18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9z\"/></svg>", "gear": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3.2\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg>", "plus": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>", "playmini": "<svg viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\" fill=\"currentColor\"/></svg>"};
 const ICON={prev:'<svg viewBox="0 0 24 24"><rect x="4" y="4.5" width="2.6" height="15" rx="1.2"/><path d="M19.2 5.3a1 1 0 0 1 1.6.8v11.8a1 1 0 0 1-1.6.8L9.6 12.8a1 1 0 0 1 0-1.6z"/></svg>',next:'<svg viewBox="0 0 24 24"><rect x="17.4" y="4.5" width="2.6" height="15" rx="1.2"/><path d="M4.8 5.3a1 1 0 0 0-1.6.8v11.8a1 1 0 0 0 1.6.8l9.6-5.9a1 1 0 0 0 0-1.6z"/></svg>',pause:'<svg viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.3"/><rect x="14" y="4.5" width="4" height="15" rx="1.3"/></svg>'};
 
+const QI='<svg class="qi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M5 6h6M5 8.5h6M5 11h6"/></svg>';
+const GRIP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
 function row(s,opts={}){
   return `<div class="song ${opts.cls||""}" role="button" tabindex="0" data-act="${opts.act||""}" data-i="${opts.i??""}" data-kind="${opts.kind||""}" aria-label="${esc(s.t)}">
-    ${art(s.c)}<div class="meta"><div class="t">${esc(s.t)}</div><div class="a">${esc(s.a)}</div></div>${who(s.w)}
+    ${art(s.c)}<div class="meta"><div class="t">${esc(s.t)}</div><div class="a">${s.w&&opts.kind!=="rec"&&!opts.nowbtn?QI:""}${esc(s.a)}</div></div>${opts.nowbtn?"":who(s.w)}
     ${opts.more?`<button class="more" type="button" data-act="${opts.moreAct||"more"}" data-i="${opts.i}" aria-label="More options for ${esc(s.t)}">⋯</button>`:""}
     ${opts.nowbtn?`<span class="nowplay" aria-hidden="true">${IC.playmini}</span>`:""}
-    ${opts.grip?`<span class="grip${opts.drag?" draggable":""}" ${opts.drag?`data-drag="${opts.i}" title="Drag to reorder"`:'aria-hidden="true"'}>≡</span>`:""}</div>`;
+    ${opts.grip?`<span class="grip${opts.drag?" draggable":""}" ${opts.drag?`data-drag="${opts.i}" title="Drag to reorder"`:'aria-hidden="true"'}>${GRIP}</span>`:""}</div>`;
 }
 function renderNow(){
   const n=S.skipped.length;
@@ -261,15 +293,14 @@ function render(keepScroll){
   app.innerHTML=`
   <div class="top"><button class="grabbar" type="button" data-act="toNow" aria-label="Close queue and show Now Playing"></button><div class="toptitle"><h3>Matt's Jam</h3></div>
     <div class="toprow"><button class="circ" type="button" data-act="std" aria-label="Invite friends">${IC.plus}</button><div class="avs"><span class="av avM">M</span><span class="av avJ">J</span><span class="av avK">K</span></div><span style="flex:1"></span><button class="circ" type="button" data-act="std" aria-label="Jam settings">${IC.gear}</button><button class="pillbtn end" type="button" data-act="std">End</button></div></div>
-  <div class="qhead"><b>Queue</b><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
+  <div class="qhead"><div class="qt"><b>Queue</b><span>Playing <em>Matt's Jam</em></span></div><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
   <div class="list" id="list">
     ${n?`<div class="skipwrap skipped" id="skipsec"><div class="sec">Skipped (${n}) <span class="hint">tap to play, or ⋯ for options</span></div>
       ${S.skipped.map((s,i)=>row(s,{act:"playSkipped",i,more:true,kind:"skipped"})).join("")}</div>`:""}
-    <div class="sec" id="nowsec">Now playing</div>
-    ${row(S.now,{cls:"now",nowbtn:true})}
+    <div id="nowsec">${row(S.now,{cls:"now",nowbtn:true})}</div>
     <div class="sec">Next in queue</div>
-    ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="text-transform:none;letter-spacing:0">Your queue is empty.</div>`}
-    <div class="sec">Next up: Recommended</div>
+    ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="font-size:14px;font-weight:400;color:var(--mute);padding-top:4px">Your queue is empty.</div>`}
+    <div class="sec">Next up: Recommended tracks</div>
     ${S.rec.map((s,i)=>row(s,{act:"playOutside",i,grip:true,kind:"rec"})).join("")}
     <div aria-hidden="true" style="height:calc(100% - 140px)"></div>
   </div>
