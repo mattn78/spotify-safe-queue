@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Safe Queue Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: desktop = scenario notes beside a phone frame; phone = the app fills the screen with notes below */
+:root{
+  --ink:#0f1115; --panel:#171a21; --row:#1d212a; --row-hi:#262b36; --line:#2c3240;
+  --txt:#f2f3f5; --mute:#9aa1b2; --dim:#5d6476;
+  --accent:#ff8a4c; --accent-ink:#1b0f08; --warn:#ffcf5c;
+  --page:#e9e6e1; --page-txt:#24262b; --page-mute:#5f6370; --card:#ffffff;
+  --f-ui:"Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --np1:#3a2a4a; --f-mono:"DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page:#0b0c0f; --page-txt:#e7e8ec; --page-mute:#9aa1b2; --card:#14161c; color-scheme:dark } }
+:root[data-theme="dark"]{ --page:#0b0c0f; --page-txt:#e7e8ec; --page-mute:#9aa1b2; --card:#14161c; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-ui);
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:24px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:40px;align-items:start}
+.notes{min-width:0;padding-top:12px}
+.notes h1{font-size:30px;line-height:1.1;margin:0 0 6px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.notes .sub{color:var(--page-mute);margin:0 0 22px;font-size:15px;max-width:60ch}
+.notes h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--page-mute);margin:22px 0 8px;font-weight:700}
+.notes ol,.notes ul{margin:0;padding-left:20px;display:grid;gap:6px;font-size:15px;line-height:1.45;max-width:62ch}
+.notes .scen{background:var(--card);border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.5;max-width:62ch}
+.restart{margin-top:22px;font:600 14px var(--f-ui);background:transparent;color:var(--page-txt);border:1.5px solid var(--page-txt);border-radius:999px;padding:9px 18px;cursor:pointer}
+.restart:focus-visible,.app button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.foot{font-size:12px;color:var(--page-mute);margin-top:18px;max-width:62ch}
+
+/* phone */
+.phone{width:100%;max-width:390px;min-width:0;height:780px;max-height:calc(100vh - 48px);min-height:620px;background:var(--ink);color:var(--txt);
+  border-radius:38px;border:10px solid #050608;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-self:end}
+.app{display:flex;flex-direction:column;height:100%;position:relative}
+.app button{font-family:var(--f-ui);color:inherit}
+.top{padding:8px 18px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.grabbar{display:block;width:60px;height:14px;border:0;background:linear-gradient(var(--line),var(--line)) center/40px 4px no-repeat;margin:0 auto 6px;cursor:pointer;border-radius:4px}
+.toptitle{display:flex;align-items:center;justify-content:space-between}
+.top{cursor:grab;touch-action:none}
+.np{display:flex;flex-direction:column;height:100%;padding:16px 22px 22px;background:linear-gradient(180deg,var(--np1),var(--ink) 70%)}
+.np-top{display:flex;align-items:center;justify-content:space-between;color:var(--mute);font-size:13px;font-weight:600}
+.np-art{width:100%;aspect-ratio:1;max-width:100%;border-radius:12px;margin:26px 0 22px;box-shadow:0 20px 40px rgba(0,0,0,.45)}
+.np-meta{display:flex;align-items:center;gap:10px}
+.np-meta .t{font-size:22px;font-weight:800}
+.np-meta .a{font-size:15px;color:var(--mute)}
+.np .bar{margin-top:18px}
+.np .ctrls{gap:26px;margin-top:14px}
+.np .cb{width:56px;height:56px;background:none}
+.np .cb:hover{background:none;opacity:.8}
+.np .cb svg{width:34px;height:34px;fill:var(--txt)}
+.np .cb{flex:none}
+.np .cb.play{width:70px;height:70px;border-radius:50%;flex:none;background:var(--txt);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.np .cb.play:hover{background:#fff;opacity:1;transform:scale(1.03)}
+.np .cb.play svg{width:30px;height:30px;fill:var(--ink)}
+.np-ctrls .npicon svg{width:26px;height:26px}
+.np-ctrls .npicon:hover{background:none;opacity:.8}
+.np-bottom{margin-top:auto;display:flex;align-items:center;gap:6px}
+.npicon{background:none;border:0;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:20px;color:var(--txt)}
+.npicon svg{width:24px;height:24px}
+.npicon:hover{background:var(--row-hi)}
+.liked{width:30px;height:30px;border-radius:50%;background:#3ddc84;color:#08210f;display:grid;place-items:center;flex:none;margin-left:auto}
+.liked svg{width:16px;height:16px}
+.np-meta .meta{flex:1;min-width:0}
+.np .np-meta .t{font-size:22px;font-weight:800;color:var(--txt)}
+.np .np-meta .a{font-size:15px}
+.np .np-ctrls{justify-content:space-between;gap:0}
+.np-hint{margin:10px 0 0;text-align:center;color:var(--warn);font-size:13px;font-weight:600;min-height:18px}
+.toast.np-toast{top:60px;bottom:auto}
+.qbtn svg{width:20px;height:20px}
+.qbtn{display:flex;align-items:center;gap:8px;background:var(--row-hi);border:0;border-radius:999px;padding:10px 16px;font:700 14px var(--f-ui);cursor:pointer}
+.qbtn .dot{background:var(--warn);color:#241a00;border-radius:999px;padding:1px 8px;font-size:12px}
+.toprow{display:flex;align-items:center;gap:8px;margin-top:10px}
+.circ{width:34px;height:34px;border-radius:50%;border:0;background:var(--row-hi);font-size:16px;cursor:pointer;display:grid;place-items:center}
+.pillbtn.end{color:#ff8f8f}
+.cb.sm{width:38px;height:38px}.cb.sm svg{width:20px;height:20px}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.actbtn{background:#2a2e37;border:0;border-radius:12px;padding:12px 0 10px;font:500 13px var(--f-ui);cursor:pointer;display:grid;justify-items:center;gap:6px;color:var(--txt)}
+.actbtn:hover{background:#333844}
+.actbtn svg{width:22px;height:22px}
+.circ svg{width:18px;height:18px}
+.ctrls.slim{margin-top:0;gap:36px}
+.qctrls{display:flex;justify-content:center;align-items:center;gap:34px;margin-bottom:10px}
+.qctrls .cb{width:46px;height:46px;flex:none;background:none}
+.qctrls .cb svg{width:28px;height:28px;fill:var(--txt)}
+.qctrls .cb.play{width:52px;height:52px;border-radius:50%;background:var(--txt)}
+.qctrls .cb.play svg{width:24px;height:24px;fill:var(--ink)}
+.nowctrls{display:flex;align-items:center;gap:2px;flex:none}
+.nc{width:34px;height:34px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer}
+.nc svg{width:18px;height:18px;fill:var(--txt)}
+.nc:hover{background:var(--row-hi)}
+.ncplay{background:var(--txt)}.ncplay svg{fill:var(--ink)}
+.nowplay{width:34px;height:34px;border-radius:50%;background:var(--txt);color:var(--ink);display:grid;place-items:center;flex:none}
+.nowplay svg{width:16px;height:16px;margin-left:2px}
+.top h3{margin:0;font-size:20px;font-weight:800}
+.avs{display:flex}
+.av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-ui);border:2px solid var(--panel);margin-left:-6px;color:#111}
+.avM{background:#ff9ec7}.avJ{background:#8fd3ff}.avK{background:#b9f28a}
+.qhead{display:flex;align-items:center;gap:8px;padding:12px 18px 6px}
+.qhead b{font-size:17px;flex:1}
+.pillbtn{background:var(--row-hi);border:0;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer}
+.list{flex:1;overflow-y:auto;position:relative;padding:0 10px 12px;scroll-behavior:smooth}
+.sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:14px 8px 6px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sec .hint{letter-spacing:0;text-transform:none;font-weight:500;color:var(--dim)}
+.song{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
+.song:hover{background:var(--row)}
+.art{width:42px;height:42px;border-radius:6px;flex:none}
+.meta{flex:1;min-width:0}
+.meta .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .a{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 11px var(--f-ui);color:#111;flex:none}
+.grip{color:var(--dim);font-size:18px;width:28px;height:34px;display:grid;place-items:center;flex:none}
+.grip.draggable{cursor:grab;touch-action:none;color:var(--mute)}
+.song.dragging{background:var(--row-hi);opacity:.9;position:relative;z-index:3;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.song.drop-before{box-shadow:inset 0 3px 0 var(--accent)}
+.song.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
+.song{-webkit-touch-callout:none;user-select:none}
+.now{background:var(--row)}
+.now .t{color:var(--accent)}
+.now .t.marq{text-overflow:clip}
+.now .t.marq span{display:inline-block;animation:marq var(--dur,8s) linear infinite;padding-right:40px}
+@keyframes marq{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--dist))}}
+@media (prefers-reduced-motion: reduce){.now .t.marq span{animation:none}.now .t.marq{text-overflow:ellipsis}}
+.hist .song{opacity:.6}
+.hist .song:hover{opacity:.9}
+.skipped .song{opacity:.55}
+.skipped .song:hover{opacity:.85}
+.more{background:none;border:0;color:var(--mute);font-size:20px;line-height:1;width:34px;height:34px;border-radius:50%;cursor:pointer;flex:none}
+.more:hover{background:var(--row-hi);color:var(--txt)}
+.skipwrap{border:1px dashed var(--line);border-radius:12px;margin:8px 0 2px;padding-bottom:4px}
+.badge{position:absolute;top:150px;left:50%;transform:translateX(-50%);background:var(--warn);color:#241a00;border:0;border-radius:999px;padding:6px 14px;font:700 13px var(--f-ui);cursor:pointer;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.player{background:var(--panel);border-top:1px solid var(--line);padding:10px 18px 16px}
+.pl-top{display:flex;align-items:center;gap:12px}
+.pl-top .meta .t{font-size:14px}
+.bar{height:3px;background:var(--line);border-radius:2px;margin:10px 0 4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--txt)}
+.times{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--mute)}
+.ctrls{display:flex;justify-content:center;align-items:center;gap:30px;margin-top:6px}
+.cb{background:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.cb:hover{background:var(--row-hi)}
+.cb svg{width:24px;height:24px;fill:var(--txt)}
+.play{background:var(--txt)}.play:hover{background:#fff}
+.play svg{fill:var(--ink)}
+/* overlays */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;z-index:20}
+.dialog{background:var(--row);border-radius:16px;padding:20px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.dialog h4{margin:0 0 6px;font-size:19px}
+.dialog p{margin:0 0 10px;color:var(--mute);font-size:14px;line-height:1.45}
+.dialog ul{margin:0 0 16px;padding:0;list-style:none;display:grid;gap:6px}
+.dialog li{display:flex;align-items:center;gap:8px;font-size:14px}
+.dbtns{display:flex;gap:10px}
+.dbtns button{flex:1;border-radius:999px;padding:11px 0;font-weight:700;font-size:15px;cursor:pointer;border:1.5px solid var(--line);background:transparent}
+.dbtns .go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.toast{position:absolute;left:12px;right:12px;bottom:168px;background:var(--txt);color:var(--ink);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;z-index:15;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.toast span{flex:1}
+.toast button{background:none;border:0;color:#b4410b;font:800 14px var(--f-ui);cursor:pointer;padding:4px 6px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--row);border-radius:18px 18px 0 0;padding:10px 10px 22px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
+.sheet .opt{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 12px;font-size:16px;font-weight:600;border-radius:10px;cursor:pointer}
+.sheet .opt:hover{background:var(--row-hi)}
+.sheet .ours{background:var(--row-hi);border-radius:12px;margin:0 2px 8px;padding:2px 0}
+.sheet .ours .opt{color:var(--accent)}
+.sheet .std{font-weight:500;padding:11px 12px;font-size:15px}
+.sheet{max-height:85%;overflow-y:auto}
+.sheet .who-line{padding:4px 12px 10px;color:var(--mute);font-size:13px}
+@media (max-width:860px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:24px}
+  .phone{justify-self:center;order:-1}
+  .notes{padding-top:0}
+}
+@media (max-width:440px){
+  body{padding-block:0}
+  .phone{justify-self:stretch;border:0;border-radius:0;max-width:none;height:100vh;height:100dvh;max-height:none;min-height:0;box-shadow:none;margin-left:calc(-1 * max(16px, env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right,0px)));width:auto}
+  .notes{padding-bottom:24px}
+}
+@media (prefers-reduced-motion: reduce){.list{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <div class="phone" aria-label="Music queue prototype">
+    <div class="app" id="app"></div>
+  </div>
+
+  <section class="notes">
+    <h1>Safe Queue</h1>
+    <p class="sub">A clickable prototype of a shared music queue that protects songs from an accidental tap. Not a real app. Song names are examples, and nothing plays.</p>
+    <h2>Scenario</h2>
+    <div class="scen">You're in a shared queue (like Spotify Jam or Apple Music SharePlay) with two friends, J and K. Everyone has added songs. While scrolling, you accidentally tap a song near the bottom.</div>
+    <h2>Try these</h2>
+    <ol>
+      <li>Tap <b>Drip</b> at the bottom of the queue. Read the popup, then tap <b>Cancel</b>. (Tapping only the very next song plays it right away.)</li>
+      <li>Tap <b>Drip</b> again and choose <b>Skip</b>. Use <b>Undo</b> in the message that appears.</li>
+      <li>Skip to Drip once more and let the message go away. Tap the yellow <b>skipped</b> button, or scroll up, to find the skipped songs.</li>
+      <li>Use the <b>⋯</b> menu on one skipped song and choose <b>Add back to queue</b> to restore just that song.</li>
+      <li>Press <b>⏮ Previous</b> (above Mix / Shuffle) and watch skipped songs come back one at a time. (Drag the queue down by its top, or tap the handle, to see the full Now Playing screen.)</li>
+      <li>Tap a <b>Recommended</b> song (not in your queue) and choose whether to keep or clear your queue.</li>
+      <li>Drag <b>≡</b> to reorder the queue. Long-press a song (or right-click on a computer) for more options.</li>
+    </ol>
+    <button class="restart" id="restart" type="button">Restart prototype</button>
+    <p class="foot">Medium-fidelity prototype for a Georgia Tech CS6750 project.</p>
+  </section>
+</div>
+
+<script>
+const ART=[["#ff7a59","#7b2ff7"],["#2bd2ff","#2b4dff"],["#ffd23f","#ee4266"],["#3bceac","#0e7c7b"],["#c86bfa","#ff9a8b"],["#f9c80e","#f86624"],["#9bf6ff","#4361ee"],["#a7c957","#386641"]];
+const WHO={M:"#ff9ec7",J:"#8fd3ff",K:"#b9f28a"};
+const START=()=>({
+  now:{t:"September",a:"Earth, Wind & Fire",w:"M",c:0},
+  queue:[
+    {t:"Fate",a:"ENHYPEN",w:"J",c:1},
+    {t:"BAD",a:"ATEEZ",w:"J",c:2},
+    {t:"EYES CLOSED",a:"JISOO, ZAYN",w:"K",c:3},
+    {t:"Hooligan",a:"BTS",w:"M",c:4},
+    {t:"Drip",a:"ATEEZ",w:"K",c:5}
+  ],
+  skipped:[],
+  rec:[{t:"Every Breath You Take",a:"The Police",c:6},{t:"Take on Me",a:"a-ha",c:7},{t:"Don't Stop Me Now",a:"Queen",c:0}],
+  history:[{t:"Dynamite",a:"BTS",w:"K",c:4},{t:"Super Shy",a:"NewJeans",w:"J",c:1},{t:"Dancing Queen",a:"ABBA",w:"M",c:6}]
+});
+let view="queue", suppressClick=false, S=START(), modal=null, toast=null, toastTimer=null, sheet=null, undoSnap=null, revealSkipped=false;
+const app=document.getElementById('app');
+const clone=o=>JSON.parse(JSON.stringify(o));
+const esc=s=>s.replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+const art=c=>`<div class="art" style="background:linear-gradient(135deg,${ART[c%8][0]},${ART[c%8][1]})"></div>`;
+const who=w=>w?`<span class="who" style="background:${WHO[w]}">${w}</span>`:"";
+const IC={"mix": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M6 4v16M12 4v16M18 4v16\"/><circle cx=\"6\" cy=\"9\" r=\"2.2\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"2.2\" fill=\"currentColor\"/><circle cx=\"18\" cy=\"7\" r=\"2.2\" fill=\"currentColor\"/></svg>", "shuffle": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 6h3c4 0 6 12 10 12h5M3 18h3c1.6 0 2.8-1.6 3.8-3.6M14.2 9.6C15.2 7.6 16.4 6 18 6h3M18 3l3 3-3 3M18 15l3 3-3 3\"/></svg>", "repeat": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 3l3 3-3 3\"/><path d=\"M4 12V9a3 3 0 0 1 3-3h13\"/><path d=\"M7 21l-3-3 3-3\"/><path d=\"M20 12v3a3 3 0 0 1-3 3H4\"/></svg>", "add": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"><path d=\"M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8z\"/><path d=\"M18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9z\"/></svg>", "gear": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3.2\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg>", "plus": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>", "playmini": "<svg viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\" fill=\"currentColor\"/></svg>"};
+const ICON={prev:'<svg viewBox="0 0 24 24"><rect x="4" y="4.5" width="2.6" height="15" rx="1.2"/><path d="M19.2 5.3a1 1 0 0 1 1.6.8v11.8a1 1 0 0 1-1.6.8L9.6 12.8a1 1 0 0 1 0-1.6z"/></svg>',next:'<svg viewBox="0 0 24 24"><rect x="17.4" y="4.5" width="2.6" height="15" rx="1.2"/><path d="M4.8 5.3a1 1 0 0 0-1.6.8v11.8a1 1 0 0 0 1.6.8l9.6-5.9a1 1 0 0 0 0-1.6z"/></svg>',pause:'<svg viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.3"/><rect x="14" y="4.5" width="4" height="15" rx="1.3"/></svg>'};
+
+function row(s,opts={}){
+  return `<div class="song ${opts.cls||""}" role="button" tabindex="0" data-act="${opts.act||""}" data-i="${opts.i??""}" data-kind="${opts.kind||""}" aria-label="${esc(s.t)}">
+    ${art(s.c)}<div class="meta"><div class="t">${esc(s.t)}</div><div class="a">${esc(s.a)}</div></div>${who(s.w)}
+    ${opts.more?`<button class="more" type="button" data-act="${opts.moreAct||"more"}" data-i="${opts.i}" aria-label="More options for ${esc(s.t)}">⋯</button>`:""}
+    ${opts.nowbtn?`<span class="nowplay" aria-hidden="true">${IC.playmini}</span>`:""}
+    ${opts.grip?`<span class="grip${opts.drag?" draggable":""}" ${opts.drag?`data-drag="${opts.i}" title="Drag to reorder"`:'aria-hidden="true"'}>≡</span>`:""}</div>`;
+}
+function renderNow(){
+  const n=S.skipped.length;
+  const I2={devices:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="11" height="16" rx="2"/><rect x="16" y="9" width="5" height="11" rx="1.5"/></svg>',
+    share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+    list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>'};
+  app.innerHTML=`<div class="np">
+    <div class="np-top"><button class="npicon" type="button" data-act="std" aria-label="Minimize player">${I2.chev}</button><span>Playing from Matt's Jam</span><button class="npicon" type="button" data-act="std" aria-label="More">⋯</button></div>
+    <div class="np-art" style="background:linear-gradient(135deg,${ART[S.now.c%8][0]},${ART[S.now.c%8][1]})"></div>
+    <div class="np-meta"><div class="meta"><div class="t">${esc(S.now.t)}</div><div class="a">${esc(S.now.a)}</div></div><span class="liked" aria-label="Saved">${I2.check}</span></div>
+    <div class="bar"><i></i></div><div class="times"><span>0:00</span><span>-3:34</span></div>
+    <div class="ctrls np-ctrls"><button class="npicon" type="button" data-act="std" aria-label="Shuffle">${IC.shuffle}</button><button class="cb" type="button" data-act="prev" aria-label="Previous">${ICON.prev}</button><button class="cb play" type="button" aria-label="Pause">${ICON.pause}</button><button class="cb" type="button" data-act="next" aria-label="Next">${ICON.next}</button><button class="npicon" type="button" data-act="std" aria-label="Repeat">${IC.repeat}</button></div>
+    ${n?`<p class="np-hint">⏮ Previous brings back skipped songs (${n} left)</p>`:'<p class="np-hint" aria-hidden="true">&nbsp;</p>'}
+    <div class="np-bottom"><button class="npicon" type="button" data-act="std" aria-label="Devices">${I2.devices}</button><span style="flex:1"></span><button class="npicon" type="button" data-act="std" aria-label="Share">${I2.share}</button>
+      <button class="qbtn" type="button" data-act="toQueue" aria-label="Open queue"><span class="av avM" style="margin:0;border:0">M</span>${I2.list}${n?`<span class="dot">${n} skipped</span>`:""}</button></div>
+  </div>
+  ${toast?`<div class="toast np-toast" role="status"><span>${toast.msg}</span>${toast.undo?'<button type="button" data-act="undo">Undo</button>':""}</div>`:""}`;
+}
+function render(keepScroll){
+  if(view==="now"){ renderNow(); return; }
+  const list=app.querySelector('.list'); const prevTop=list?list.scrollTop:0;
+  const n=S.skipped.length;
+  app.innerHTML=`
+  <div class="top"><button class="grabbar" type="button" data-act="toNow" aria-label="Close queue and show Now Playing"></button><div class="toptitle"><h3>Matt's Jam</h3></div>
+    <div class="toprow"><button class="circ" type="button" data-act="std" aria-label="Invite friends">${IC.plus}</button><div class="avs"><span class="av avM">M</span><span class="av avJ">J</span><span class="av avK">K</span></div><span style="flex:1"></span><button class="circ" type="button" data-act="std" aria-label="Jam settings">${IC.gear}</button><button class="pillbtn end" type="button" data-act="std">End</button></div></div>
+  <div class="qhead"><b>Queue</b><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
+  <div class="list" id="list">
+    ${n?`<div class="skipwrap skipped" id="skipsec"><div class="sec">Skipped (${n}) <span class="hint">tap to play · ⋯ for options</span></div>
+      ${S.skipped.map((s,i)=>row(s,{act:"playSkipped",i,more:true,kind:"skipped"})).join("")}</div>`:""}
+    <div class="sec" id="nowsec">Now playing</div>
+    ${row(S.now,{cls:"now",nowbtn:true})}
+    <div class="sec">Next in queue</div>
+    ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="text-transform:none;letter-spacing:0">Your queue is empty.</div>`}
+    <div class="sec">Next up: Recommended <span class="hint">(not in your queue)</span></div>
+    ${S.rec.map((s,i)=>row(s,{act:"playOutside",i,grip:true,kind:"rec"})).join("")}
+    <div aria-hidden="true" style="height:calc(100% - 140px)"></div>
+  </div>
+  ${n&&!revealSkipped?`<button class="badge" type="button" data-act="reveal">↑ ${n} skipped</button>`:""}
+  <div class="player">
+    <div class="qctrls"><button class="cb" type="button" data-act="prev" aria-label="Previous">${ICON.prev}</button><button class="cb play" type="button" data-act="noop" aria-label="Pause">${ICON.pause}</button><button class="cb" type="button" data-act="next" aria-label="Next">${ICON.next}</button></div>
+    <div class="actions">${[["Mix","mix"],["Shuffle","shuffle"],["Repeat","repeat"],["Add songs","add"]].map(([a,k])=>`<button class="actbtn" type="button" data-act="std">${IC[k]}<span>${a}</span></button>`).join("")}</div>
+  </div>
+  ${toast?`<div class="toast" role="status"><span>${toast.msg}</span>${toast.undo?'<button type="button" data-act="undo">Undo</button>':""}</div>`:""}
+  ${modal?modalHTML():""}
+  ${sheet!==null?sheetHTML():""}`;
+  const nt=app.querySelector('.now .t'); if(nt && nt.scrollWidth>nt.clientWidth+2){ const d=nt.scrollWidth-nt.clientWidth+12; nt.innerHTML=`<span>${nt.innerHTML}</span>`; nt.classList.add('marq'); nt.style.setProperty('--dist',`-${d}px`); nt.style.setProperty('--dur',`${Math.max(6,d/18)}s`); }
+  const L=app.querySelector('.list');
+  if(keepScroll){ L.style.scrollBehavior='auto'; L.scrollTop=prevTop; L.style.scrollBehavior=''; }
+  else { const ns=app.querySelector('#nowsec'); L.style.scrollBehavior='auto'; L.scrollTop=revealSkipped?((app.querySelector('#skipsec')||{offsetTop:6}).offsetTop-6):(ns?ns.offsetTop-4:0); L.style.scrollBehavior=''; }
+  L.addEventListener('scroll',()=>{ if(S.skipped.length && !revealSkipped && L.scrollTop<20){ revealSkipped=true; const b=app.querySelector('.badge'); if(b) b.remove(); } });
+}
+function modalHTML(){
+  if(modal.type==="skip"){
+    const songs=[S.now,...S.queue.slice(0,modal.i)];
+    return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+      <h4 id="dlgT">Skip ${songs.length} songs?</h4>
+      <p>Playing "${esc(S.queue[modal.i].t)}" now will skip these songs in the shared queue:</p>
+      <ul>${songs.map((s,k)=>`<li>${who(s.w)}${esc(s.t)}${k===0?' <span style="color:var(--mute)">(now playing)</span>':""}</li>`).join("")}</ul>
+      <div class="dbtns"><button type="button" data-act="cancel">Cancel</button><button type="button" class="go" data-act="confirmSkip">Skip</button></div></div></div>`;
+  }
+  if(modal.type==="outside"){
+    const r=S.rec[modal.i];
+    return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+      <h4 id="dlgT">Keep your queue?</h4>
+      <p>"${esc(r.t)}" isn't in your queue. You have ${S.queue.length} song${S.queue.length>1?"s":""} queued. Play it now and:</p>
+      <div class="dbtns" style="flex-direction:column"><button type="button" class="go" data-act="outsideKeep">Keep queue</button><button type="button" data-act="outsideClear">Clear queue</button><button type="button" data-act="cancel" style="border-color:transparent">Cancel</button></div></div></div>`;
+  }
+  return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+    <h4 id="dlgT">Clear the queue?</h4><p>This removes all ${S.queue.length} songs, including songs your friends added.</p>
+    <div class="dbtns"><button type="button" data-act="cancel">Cancel</button><button type="button" class="go" data-act="confirmClear">Clear</button></div></div></div>`;
+}
+function sheetHTML(){
+  const STD=["Add to playlist","Save to Liked Songs","Go to album","Go to artist","View song credits","Share"].map(o=>`<button class="opt std" type="button" data-act="std">${o}</button>`).join("");
+  if(sheet.kind==="hist"){
+    const h=S.history[sheet.i];
+    return `<div class="scrim" data-act="closeSheet" style="place-items:end;padding:0"></div><div class="sheet" role="dialog" aria-label="Options for ${esc(h.t)}"><div class="grab"></div>
+      <div class="who-line">${esc(h.t)} · ${esc(h.a)} · played earlier</div>
+      <div class="ours"><button class="opt" type="button" data-act="histPlay">▶ Play again</button><button class="opt" type="button" data-act="histAdd">＋ Add to queue</button></div>${STD}
+      <button class="opt std" type="button" data-act="closeSheet">Cancel</button></div>`;
+  }
+  if(sheet.kind!=="skipped"){
+    const s=sheet.kind==="queue"?S.queue[sheet.i]:S.rec[sheet.i];
+    const top=sheet.kind==="queue"?`<button class="opt" type="button" data-act="removeQ">− Remove from queue</button>`:`<button class="opt" type="button" data-act="addRec">＋ Add to queue</button>`;
+    return `<div class="scrim" data-act="closeSheet" style="place-items:end;padding:0"></div><div class="sheet" role="dialog" aria-label="Options for ${esc(s.t)}"><div class="grab"></div>
+      <div class="who-line">${esc(s.t)} · ${esc(s.a)}${s.w?` · added by ${s.w}`:""}</div>
+      <div class="ours">${top}</div>${STD}
+      <button class="opt std" type="button" data-act="closeSheet">Cancel</button></div>`;
+  }
+  const s=S.skipped[sheet.i];
+  return `<div class="scrim" data-act="closeSheet" style="place-items:end;padding:0"></div><div class="sheet" role="dialog" aria-label="Options for ${esc(s.t)}"><div class="grab"></div>
+    <div class="who-line">${esc(s.t)} · ${esc(s.a)} · added by ${s.w} · skipped</div>
+    <div class="ours">
+      <button class="opt" type="button" data-act="addBack">＋ Add back to queue</button>
+      <button class="opt" type="button" data-act="sheetPlay">▶ Play now</button>
+    </div>
+    ${STD}
+    <button class="opt std" type="button" data-act="closeSheet">Cancel</button></div>`;
+}
+function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast=null; render(true);},6000); }
+function snap(){ undoSnap=clone(S); }
+function doSkip(i){
+  snap();
+  if(i===0){ S.history.push(S.now); S.now=S.queue.shift(); toast=null; render(false); return; }
+  const skippedNow=[S.now,...S.queue.slice(0,i)];
+  S.skipped.push(...skippedNow);
+  S.now=S.queue[i]; S.queue=S.queue.slice(i+1);
+  revealSkipped=false;
+  if(skippedNow.length) showToast(`${skippedNow.length} song${skippedNow.length>1?"s":""} skipped`,true); else toast=null;
+  render(false);
+}
+app.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const act=el.dataset.act, i=+el.dataset.i;
+  if(act==="more"){ e.stopPropagation(); sheet={kind:"skipped",i}; render(true); return; }
+  if(act==="moreHist"){ e.stopPropagation(); sheet={kind:"hist",i}; render(true); return; }
+  if(suppressClick){ suppressClick=false; return; }
+  switch(act){
+    case "tap": if(i>=1){ modal={type:"skip",i}; render(true);} else doSkip(i); break;
+    case "cancel": modal=null; render(true); break;
+    case "toNow": view="now"; sheet=null; render(); break;
+    case "toQueue": view="queue"; render(false); break;
+    case "confirmSkip": { const k=modal.i; modal=null; doSkip(k); break; }
+    case "undo": if(undoSnap){ S=undoSnap; undoSnap=null; toast=null; clearTimeout(toastTimer); revealSkipped=false; showToast("Queue restored",false); render(false);} break;
+    case "reveal": { revealSkipped=true; render(true); const L=app.querySelector('.list'), sk=app.querySelector('#skipsec'); L.scrollTo({top:sk?sk.offsetTop-6:0}); break; }
+    case "playSkipped": { snap(); const s=S.skipped[i]; const back=S.skipped.slice(i+1); S.queue=[...back,S.now,...S.queue]; S.now=s; S.skipped=S.skipped.slice(0,i); showToast(`Playing ${esc(s.t)}. ${back.length+1} song${back.length?"s":""} back in the queue`,true); render(false); break; }
+    case "addBack": { snap(); const s=S.skipped.splice(sheet.i,1)[0]; S.queue.unshift(s); sheet=null; showToast(`Added "${esc(s.t)}" back as next`,true); render(true); break; }
+    case "sheetPlay": { const k=sheet.i; sheet=null; snap(); const s=S.skipped[k]; const back=S.skipped.slice(k+1); S.queue=[...back,S.now,...S.queue]; S.now=s; S.skipped=S.skipped.slice(0,k); showToast(`Playing ${esc(s.t)}`,true); render(false); break; }
+    case "closeSheet": sheet=null; render(true); break;
+    case "playHist": { snap(); const h=S.history.splice(i,1)[0]; S.queue.unshift(S.now); S.now=h; showToast(`Playing "${esc(h.t)}" again`,true); render(false); break; }
+    case "histAdd": { snap(); const h=S.history[sheet.i]; S.queue.push({...h}); sheet=null; showToast(`Added "${esc(h.t)}" to the queue`,true); render(true); break; }
+    case "histPlay": { const k=sheet.i; sheet=null; snap(); const h=S.history.splice(k,1)[0]; S.queue.unshift(S.now); S.now=h; showToast(`Playing "${esc(h.t)}" again`,true); render(false); break; }
+    case "removeQ": { snap(); const s=S.queue.splice(sheet.i,1)[0]; sheet=null; showToast(`Removed "${esc(s.t)}"`,true); render(true); break; }
+    case "addRec": { snap(); const s={...S.rec[sheet.i],w:"M"}; S.queue.push(s); sheet=null; showToast(`Added "${esc(s.t)}" to the queue`,true); render(true); break; }
+    case "std": sheet=null; showToast("Not part of this prototype",false); render(true); break;
+    case "playOutside": if(S.queue.length){ modal={type:"outside",i}; render(true);} else { S.history.push(S.now); S.now=S.rec.splice(i,1)[0]; render(false);} break;
+    case "outsideKeep": { const r=S.rec.splice(modal.i,1)[0]; modal=null; S.history.push(S.now); S.now=r; showToast(`Playing "${esc(r.t)}". Your queue is kept`,false); render(true); break; }
+    case "outsideClear": { snap(); const r=S.rec.splice(modal.i,1)[0]; const n=S.queue.length; modal=null; S.history.push(S.now); S.now=r; S.queue=[]; showToast(`Playing "${esc(r.t)}". Cleared ${n} songs`,true); render(true); break; }
+    case "prev":
+      if(S.skipped.length){ snap(); S.queue.unshift(S.now); S.now=S.skipped.pop(); showToast(`Brought back "${esc(S.now.t)}" from Skipped`,true); render(false); }
+      else if(S.history.length){ S.queue.unshift(S.now); S.now=S.history.pop(); render(false); }
+      break;
+    case "next": if(S.queue.length){ S.history.push(S.now); S.now=S.queue.shift(); render(false);} else if(S.rec.length){ S.history.push(S.now); S.now=S.rec.shift(); showToast(`Playing a recommended song: "${esc(S.now.t)}"`,false); render(false);} else { showToast("Nothing left to play",false); render(true);} break;
+    case "noop": break;
+    case "clear": if(S.queue.length){ modal={type:"clear"}; render(true);} break;
+    case "confirmClear": snap(); const n=S.queue.length; S.queue=[]; modal=null; showToast(`Cleared ${n} songs`,true); render(true); break;
+  }
+});
+
+// drag the queue sheet down to reveal Now Playing
+let sd=null;
+app.addEventListener('pointerdown',e=>{
+  if(view!=="queue") return;
+  const top=e.target.closest('.top'); if(!top || (e.target.closest('button') && !e.target.closest('.grabbar'))) return;
+  sd={y:e.clientY,dy:0,moved:false,grab:!!e.target.closest('.grabbar')};
+});
+window.addEventListener('pointermove',e=>{
+  if(!sd) return; sd.dy=Math.max(0,e.clientY-sd.y); if(sd.dy>4) sd.moved=true;
+  app.style.transition='none'; app.style.transform=`translateY(${sd.dy}px)`;
+});
+const endSheet=()=>{
+  if(!sd) return; const {dy,moved,grab}=sd; sd=null;
+  app.style.transition='transform .22s ease';
+  if(dy>110){ app.style.transform='translateY(100%)'; setTimeout(()=>{ app.style.transition='none'; app.style.transform=''; view="now"; sheet=null; render(); },200); }
+  else { app.style.transform=''; if(!moved && grab){ suppressClick=true; setTimeout(()=>suppressClick=false,50); view="now"; sheet=null; render(); return; } }
+  if(moved){ suppressClick=true; setTimeout(()=>suppressClick=false,50); }
+};
+window.addEventListener('pointerup',endSheet); window.addEventListener('pointercancel',endSheet);
+// drag to reorder (queue only)
+let drag=null;
+app.addEventListener('pointerdown',e=>{
+  const g=e.target.closest('.grip.draggable');
+  if(g){ e.preventDefault(); const rowEl=g.closest('.song'); drag={from:+g.dataset.drag,rowEl,startY:e.clientY,to:+g.dataset.drag}; rowEl.classList.add('dragging'); g.setPointerCapture(e.pointerId); return; }
+  const r=e.target.closest('.song[data-kind]');
+  if(r && !e.target.closest('.more')){
+    const kind=r.dataset.kind, i=+r.dataset.i;
+    lp={t:setTimeout(()=>{ suppressClick=true; sheet={kind,i}; render(true); },500),x:e.clientX,y:e.clientY};
+  }
+});
+let lp=null;
+app.addEventListener('pointermove',e=>{
+  if(lp && (Math.abs(e.clientX-lp.x)>8||Math.abs(e.clientY-lp.y)>8)){ clearTimeout(lp.t); lp=null; }
+  if(!drag) return;
+  drag.rowEl.style.transform=`translateY(${e.clientY-drag.startY}px)`;
+  const rows=[...app.querySelectorAll('.song[data-kind=queue]')];
+  rows.forEach(r=>r.classList.remove('drop-before','drop-after'));
+  let to=drag.from;
+  rows.forEach((r,k)=>{ if(r===drag.rowEl) return; const b=r.getBoundingClientRect(); if(e.clientY>b.top && e.clientY<b.bottom){ to=k; r.classList.add(k<drag.from?'drop-before':'drop-after'); } });
+  drag.to=to;
+});
+const endDrag=()=>{ if(lp){clearTimeout(lp.t); lp=null;} if(!drag) return; const {from,to}=drag; drag=null; if(to!==from){ snap(); const [m]=S.queue.splice(from,1); S.queue.splice(to,0,m); } suppressClick=true; setTimeout(()=>suppressClick=false,50); render(true); };
+app.addEventListener('pointerup',endDrag); app.addEventListener('pointercancel',endDrag);
+app.addEventListener('contextmenu',e=>{ const r=e.target.closest('.song[data-kind]'); if(!r) return; e.preventDefault(); const kind=r.dataset.kind, i=+r.dataset.i; sheet={kind,i}; render(true); });
+app.addEventListener('keydown',e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches('.song[role=button]')){ e.preventDefault(); e.target.click(); }});
+document.getElementById('restart').addEventListener('click',()=>{ S=START(); view="queue"; modal=null; toast=null; sheet=null; undoSnap=null; revealSkipped=false; clearTimeout(toastTimer); render(false); });
+render(false);
+</script>
+
+</html>
