@@ -195,7 +195,9 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .nowplay{width:38px;height:38px}
 .skipwrap{border:0;border-radius:0;margin:0;padding:0}
 .skipwrap .sec{border-top:0;margin-top:0}
-.skipped .song{opacity:.5}
+.skipped .song{opacity:.55}
+.skipped .song.issk{opacity:.8}
+.sktag{background:var(--warn);color:#241a00;font-size:11px;font-weight:700;border-radius:4px;padding:1px 5px;flex:none}
 .player{background:var(--ink);border-top:0;padding:8px 18px 16px}
 .actions{gap:8px}
 .actbtn{background:var(--row-hi);border-radius:14px;padding:14px 0 12px;font:500 14px var(--f-ui);gap:8px}
@@ -245,10 +247,12 @@ const START=()=>({
     {t:"Hooligan",a:"BTS",w:"M",c:4},
     {t:"Drip",a:"ATEEZ",w:"K",c:5}
   ],
-  skipped:[],
+  skipped:[{t:"Dynamite",a:"BTS",w:"K",c:4},{t:"Super Shy",a:"NewJeans",w:"J",c:1},{t:"Dancing Queen",a:"ABBA",w:"M",c:6}],
   rec:[{t:"Every Breath You Take",a:"The Police",c:6},{t:"Take on Me",a:"a-ha",c:7},{t:"Don't Stop Me Now",a:"Queen",c:0}],
-  history:[{t:"Dynamite",a:"BTS",w:"K",c:4},{t:"Super Shy",a:"NewJeans",w:"J",c:1},{t:"Dancing Queen",a:"ABBA",w:"M",c:6}]
+  history:[]
 });
+const skN=()=>S.skipped.filter(x=>x.sk).length;
+const clean=x=>{const {sk,...r}=x; return r;};
 let view="queue", suppressClick=false, S=START(), modal=null, toast=null, toastTimer=null, sheet=null, undoSnap=null, revealSkipped=false;
 const app=document.getElementById('app');
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -262,25 +266,25 @@ const QI='<svg class="qi" viewBox="0 0 16 16" fill="none" stroke="currentColor" 
 const GRIP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
 function row(s,opts={}){
   return `<div class="song ${opts.cls||""}" role="button" tabindex="0" data-act="${opts.act||""}" data-i="${opts.i??""}" data-kind="${opts.kind||""}" aria-label="${esc(s.t)}">
-    ${art(s.c)}<div class="meta"><div class="t">${esc(s.t)}</div><div class="a">${s.w&&opts.kind!=="rec"&&!opts.nowbtn?QI:""}${esc(s.a)}</div></div>${opts.nowbtn?"":who(s.w)}
+    ${art(s.c)}<div class="meta"><div class="t">${esc(s.t)}</div><div class="a">${s.w&&opts.kind!=="rec"&&!opts.nowbtn?QI:""}${s.sk&&opts.kind==="skipped"?'<span class="sktag">Skipped</span>':""}${esc(s.a)}</div></div>${opts.nowbtn?"":who(s.w)}
     ${opts.more?`<button class="more" type="button" data-act="${opts.moreAct||"more"}" data-i="${opts.i}" aria-label="More options for ${esc(s.t)}">⋯</button>`:""}
     ${opts.nowbtn?`<span class="nowplay" aria-hidden="true">${IC.playmini}</span>`:""}
     ${opts.grip?`<span class="grip${opts.drag?" draggable":""}" ${opts.drag?`data-drag="${opts.i}" title="Drag to reorder"`:'aria-hidden="true"'}>${GRIP}</span>`:""}</div>`;
 }
 function renderNow(){
-  const n=S.skipped.length;
+  const n=skN();
   const I2={devices:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="11" height="16" rx="2"/><rect x="16" y="9" width="5" height="11" rx="1.5"/></svg>',
     share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
     list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
     check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
     chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>'};
   app.innerHTML=`<div class="np">
-    <div class="np-top"><button class="npicon" type="button" data-act="std" aria-label="Minimize player">${I2.chev}</button><span>Playing from Matt's Jam</span><button class="npicon" type="button" data-act="std" aria-label="More">⋯</button></div>
+    <div class="np-top"><button class="npicon" type="button" data-act="std" aria-label="Minimize player">${I2.chev}</button><span style="color:var(--txt);font-weight:700;font-size:15px">Recent Searches</span><button class="npicon" type="button" data-act="std" aria-label="More">⋯</button></div>
     <div class="np-art" style="background:linear-gradient(135deg,${ART[S.now.c%8][0]},${ART[S.now.c%8][1]})"></div>
     <div class="np-meta"><div class="meta"><div class="t">${esc(S.now.t)}</div><div class="a">${esc(S.now.a)}</div></div><span class="liked" aria-label="Saved">${I2.check}</span></div>
     <div class="bar"><i></i></div><div class="times"><span>0:00</span><span>-3:34</span></div>
     <div class="ctrls np-ctrls"><button class="npicon" type="button" data-act="std" aria-label="Shuffle">${IC.shuffle}</button><button class="cb" type="button" data-act="prev" aria-label="Previous">${ICON.prev}</button><button class="cb play" type="button" aria-label="Pause">${ICON.pause}</button><button class="cb" type="button" data-act="next" aria-label="Next">${ICON.next}</button><button class="npicon" type="button" data-act="std" aria-label="Repeat">${IC.repeat}</button></div>
-    ${n?`<p class="np-hint">⏮ Previous brings back skipped songs (${n} left)</p>`:'<p class="np-hint" aria-hidden="true">&nbsp;</p>'}
+    ${n?`<p class="np-hint">⏮ Previous steps back through History (${n} skipped)</p>`:'<p class="np-hint" aria-hidden="true">&nbsp;</p>'}
     <div class="np-bottom"><button class="npicon" type="button" data-act="std" aria-label="Devices">${I2.devices}</button><span style="flex:1"></span><button class="npicon" type="button" data-act="std" aria-label="Share">${I2.share}</button>
       <button class="qbtn" type="button" data-act="toQueue" aria-label="Open queue"><span class="av avM" style="margin:0;border:0">M</span>${I2.list}${n?`<span class="dot">${n} skipped</span>`:""}</button></div>
   </div>
@@ -289,17 +293,17 @@ function renderNow(){
 function render(keepScroll){
   if(view==="now"){ renderNow(); return; }
   const list=app.querySelector('.list'); const prevTop=list?list.scrollTop:0;
-  const n=S.skipped.length;
+  const n=skN(), H=S.skipped.length;
   app.innerHTML=`
   <div class="top"><button class="grabbar" type="button" data-act="toNow" aria-label="Close queue and show Now Playing"></button><div class="toptitle"><h3>Matt's Jam</h3></div>
     <div class="toprow"><button class="circ" type="button" data-act="std" aria-label="Invite friends">${IC.plus}</button><div class="avs"><span class="av avM">M</span><span class="av avJ">J</span><span class="av avK">K</span></div><span style="flex:1"></span><button class="circ" type="button" data-act="std" aria-label="Jam settings">${IC.gear}</button><button class="pillbtn end" type="button" data-act="std">End</button></div></div>
-  <div class="qhead"><div class="qt"><b>Queue</b><span>Playing <em>Matt's Jam</em></span></div><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
+  <div class="qhead"><div class="qt"><b>Queue</b><span>Playing <em style="font-weight:600">Recent Searches</em></span></div><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
   <div class="list" id="list">
-    ${n?`<div class="skipwrap skipped" id="skipsec"><div class="sec">Skipped (${n}) <span class="hint">tap to play, or ⋯ for options</span></div>
-      ${S.skipped.map((s,i)=>row(s,{act:"playSkipped",i,more:true,kind:"skipped"})).join("")}</div>`:""}
+    ${H?`<div class="skipwrap skipped" id="skipsec"><div class="sec">History <span class="hint">tap to play, or ⋯ for options</span></div>
+      ${S.skipped.map((s,i)=>row(s,{act:"playSkipped",i,more:true,kind:"skipped",cls:s.sk?"issk":""})).join("")}</div>`:""}
     <div id="nowsec">${row(S.now,{cls:"now",nowbtn:true})}</div>
     <div class="sec">Next in queue</div>
-    ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="font-size:14px;font-weight:400;color:var(--mute);padding-top:4px">Your queue is empty.</div>`}
+    ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="font-size:14px;font-weight:400;color:var(--mute);padding-top:2px;border-top:0;margin-top:0">Your queue is empty.</div>`}
     <div class="sec">Next up: Recommended tracks</div>
     ${S.rec.map((s,i)=>row(s,{act:"playOutside",i,grip:true,kind:"rec"})).join("")}
     <div aria-hidden="true" style="height:calc(100% - 140px)"></div>
@@ -313,10 +317,10 @@ function render(keepScroll){
   ${modal?modalHTML():""}
   ${sheet!==null?sheetHTML():""}`;
   const nt=app.querySelector('.now .t'); if(nt && nt.scrollWidth>nt.clientWidth+2){ const d=nt.scrollWidth-nt.clientWidth+12; nt.innerHTML=`<span>${nt.innerHTML}</span>`; nt.classList.add('marq'); nt.style.setProperty('--dist',`-${d}px`); nt.style.setProperty('--dur',`${Math.max(6,d/18)}s`); }
-  const L=app.querySelector('.list');
+  const L=app.querySelector('.list'); const bd=app.querySelector('.badge'); if(bd) bd.style.top=(L.offsetTop+6)+'px';
   if(keepScroll){ L.style.scrollBehavior='auto'; L.scrollTop=prevTop; L.style.scrollBehavior=''; }
-  else { const ns=app.querySelector('#nowsec'); L.style.scrollBehavior='auto'; L.scrollTop=revealSkipped?((app.querySelector('#skipsec')||{offsetTop:6}).offsetTop-6):(ns?ns.offsetTop-4:0); L.style.scrollBehavior=''; }
-  L.addEventListener('scroll',()=>{ if(S.skipped.length && !revealSkipped && L.scrollTop<20){ revealSkipped=true; const b=app.querySelector('.badge'); if(b) b.remove(); } });
+  else { const ns=app.querySelector('#nowsec'); L.style.scrollBehavior='auto'; L.scrollTop=ns?ns.offsetTop-4:0; L.style.scrollBehavior=''; }
+  L.addEventListener('scroll',()=>{ if(skN() && !revealSkipped && L.scrollTop<20){ revealSkipped=true; const b=app.querySelector('.badge'); if(b) b.remove(); } });
 }
 function modalHTML(){
   if(modal.type==="skip"){
@@ -357,7 +361,7 @@ function sheetHTML(){
   }
   const s=S.skipped[sheet.i];
   return `<div class="scrim" data-act="closeSheet" style="place-items:end;padding:0"></div><div class="sheet" role="dialog" aria-label="Options for ${esc(s.t)}"><div class="grab"></div>
-    <div class="who-line">${esc(s.t)} · ${esc(s.a)} · added by ${s.w} · skipped</div>
+    <div class="who-line">${esc(s.t)} · ${esc(s.a)} ${s.w?` · added by ${s.w}`:""}${s.sk?" · skipped":" · played"}</div>
     <div class="ours">
       <button class="opt" type="button" data-act="addBack">＋ Add back to queue</button>
       <button class="opt" type="button" data-act="sheetPlay">▶ Play now</button>
@@ -367,12 +371,21 @@ function sheetHTML(){
 }
 function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast=null; render(true);},6000); }
 function snap(){ undoSnap=clone(S); }
+// Tap a History song: play it now. Skipped songs after it return to the queue in order;
+// songs that already played stay in History. The song you leave goes back to the top of the queue.
+function playHistory(k){
+  snap(); const H=S.skipped, s=clean(H[k]), after=H.slice(k+1);
+  const back=after.filter(x=>x.sk).map(clean);
+  S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now);
+  S.skipped=[...H.slice(0,k),...after.filter(x=>!x.sk)]; S.now=s;
+  showToast(back.length?`Playing "${esc(s.t)}". ${back.length} skipped song${back.length>1?"s":""} back in the queue`:`Playing "${esc(s.t)}"`,true); render(false);
+}
 function doSkip(i){
   snap();
   const A=[...S.queue,...S.rec], Q=S.queue.length;
-  if(i===0){ S.history.push(S.now); S.now=A[0]; if(Q) S.queue.shift(); else S.rec.shift(); toast=null; render(false); return; }
+  if(i===0){ S.skipped.push(clean(S.now)); S.now=A[0]; if(Q) S.queue.shift(); else S.rec.shift(); toast=null; render(false); return; }
   const skippedNow=[S.now,...A.slice(0,i)];
-  S.skipped.push(...skippedNow);
+  S.skipped.push(...skippedNow.filter((x,k)=>k===0||x.w).map(x=>({...clean(x),sk:true})));  // skipped autoplay songs are not saved; Undo still restores them
   S.now=A[i];
   if(i<Q){ S.queue=S.queue.slice(i+1); } else { S.rec=S.rec.slice(i-Q+1); S.queue=[]; }
   revealSkipped=false;
@@ -392,10 +405,10 @@ app.addEventListener('click',e=>{
     case "toQueue": view="queue"; render(false); break;
     case "confirmSkip": { const k=modal.i; modal=null; doSkip(k); break; }
     case "undo": if(undoSnap){ S=undoSnap; undoSnap=null; toast=null; clearTimeout(toastTimer); revealSkipped=false; showToast("Queue restored",false); render(false);} break;
-    case "reveal": { revealSkipped=true; render(true); const L=app.querySelector('.list'), sk=app.querySelector('#skipsec'); L.scrollTo({top:sk?sk.offsetTop-6:0}); break; }
-    case "playSkipped": { snap(); const s=S.skipped[i]; const back=S.skipped.slice(i+1); S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now); S.now=s; S.skipped=S.skipped.slice(0,i); showToast(`Playing ${esc(s.t)}. ${back.length+1} song${back.length?"s":""} back in the queue`,true); render(false); break; }
-    case "addBack": { snap(); const s=S.skipped.splice(sheet.i,1)[0]; S.queue.unshift(s); sheet=null; showToast(`Added "${esc(s.t)}" back as next`,true); render(true); break; }
-    case "sheetPlay": { const k=sheet.i; sheet=null; snap(); const s=S.skipped[k]; const back=S.skipped.slice(k+1); S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now); S.now=s; S.skipped=S.skipped.slice(0,k); showToast(`Playing ${esc(s.t)}`,true); render(false); break; }
+    case "reveal": { revealSkipped=true; render(true); const L=app.querySelector('.list'), sk=app.querySelector('.issk')||app.querySelector('#skipsec'); L.scrollTo({top:sk?sk.offsetTop-40:0}); break; }
+    case "playSkipped": playHistory(i); break;
+    case "addBack": { snap(); const s=clean(S.skipped.splice(sheet.i,1)[0]); S.queue.unshift(s); sheet=null; showToast(`Added "${esc(s.t)}" back as next`,true); render(true); break; }
+    case "sheetPlay": { const k=sheet.i; sheet=null; playHistory(k); break; }
     case "closeSheet": sheet=null; render(true); break;
     case "playHist": { snap(); const h=S.history.splice(i,1)[0]; S.queue.unshift(S.now); S.now=h; showToast(`Playing "${esc(h.t)}" again`,true); render(false); break; }
     case "histAdd": { snap(); const h=S.history[sheet.i]; S.queue.push({...h}); sheet=null; showToast(`Added "${esc(h.t)}" to the queue`,true); render(true); break; }
@@ -407,10 +420,9 @@ app.addEventListener('click',e=>{
     case "outsideKeep": { const r=S.rec.splice(modal.i,1)[0]; modal=null; S.history.push(S.now); S.now=r; showToast(`Playing "${esc(r.t)}". Your queue is kept`,false); render(true); break; }
     case "outsideClear": { snap(); const r=S.rec.splice(modal.i,1)[0]; const n=S.queue.length; modal=null; S.history.push(S.now); S.now=r; S.queue=[]; showToast(`Playing "${esc(r.t)}". Cleared ${n} songs`,true); render(true); break; }
     case "prev":
-      if(S.skipped.length){ snap(); if(S.now.w) S.queue.unshift(S.now); else S.rec.unshift(S.now); S.now=S.skipped.pop(); showToast(`Brought back "${esc(S.now.t)}" from Skipped`,true); render(false); }
-      else if(S.history.length){ if(S.now.w) S.queue.unshift(S.now); else S.rec.unshift(S.now); S.now=S.history.pop(); render(false); }
+      if(S.skipped.length){ snap(); if(S.now.w) S.queue.unshift(S.now); else S.rec.unshift(S.now); const back=S.skipped.pop(); S.now=clean(back); if(back.sk) showToast(`Brought back "${esc(S.now.t)}"`,true); else toast=null; render(false); }
       break;
-    case "next": if(S.queue.length){ S.history.push(S.now); S.now=S.queue.shift(); render(false);} else if(S.rec.length){ S.history.push(S.now); S.now=S.rec.shift(); showToast(`Playing a recommended song: "${esc(S.now.t)}"`,false); render(false);} else { showToast("Nothing left to play",false); render(true);} break;
+    case "next": if(S.queue.length){ S.skipped.push(clean(S.now)); S.now=S.queue.shift(); render(false);} else if(S.rec.length){ S.skipped.push(clean(S.now)); S.now=S.rec.shift(); showToast(`Playing a recommended song: "${esc(S.now.t)}"`,false); render(false);} else { showToast("Nothing left to play",false); render(true);} break;
     case "noop": break;
     case "clear": if(S.queue.length){ modal={type:"clear"}; render(true);} break;
     case "confirmClear": snap(); const n=S.queue.length; S.queue=[]; modal=null; showToast(`Cleared ${n} songs`,true); render(true); break;
