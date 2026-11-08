@@ -204,6 +204,9 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .actbtn svg{width:24px;height:24px}
 .np{background:linear-gradient(180deg,#5a3b2a,#121212 75%)}
 .np-meta .t,.np .np-meta .t{font-size:26px;font-weight:700;letter-spacing:-.01em}
+body.rec .notes{display:none}
+body.rec .wrap{grid-template-columns:390px;justify-content:center}
+body.rec .phone{justify-self:center}
 @media (max-width:860px){
   .wrap{grid-template-columns:minmax(0,1fr);gap:24px}
   .phone{justify-self:center;order:-1}
@@ -236,6 +239,8 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 </div>
 
 <script>
+function recMode(){document.body.classList.toggle('rec',location.hash==='#record');}
+recMode(); addEventListener('hashchange',recMode);
 const ART=[["#ff7a59","#7b2ff7"],["#2bd2ff","#2b4dff"],["#ffd23f","#ee4266"],["#3bceac","#0e7c7b"],["#c86bfa","#ff9a8b"],["#f9c80e","#f86624"],["#9bf6ff","#4361ee"],["#a7c957","#386641"]];
 const WHO={M:"#ff9ec7",J:"#8fd3ff",K:"#b9f28a"};
 const START=()=>({
