@@ -195,7 +195,7 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
       <li>Skip to Drip once more and let the message go away. Tap the yellow <b>skipped</b> button, or scroll up, to find the skipped songs.</li>
       <li>Use the <b>⋯</b> menu on one skipped song and choose <b>Add back to queue</b> to restore just that song.</li>
       <li>Press <b>⏮ Previous</b> (above Mix / Shuffle) and watch skipped songs come back one at a time. (Drag the queue down by its top, or tap the handle, to see the full Now Playing screen.)</li>
-      <li>Tap a <b>Recommended</b> song (not in your queue) and choose whether to keep or clear your queue.</li>
+      <li>Tap a <b>Recommended</b> song. It works like any other song: you are asked first, and everything above it goes to Skipped.</li>
       <li>Drag <b>≡</b> to reorder the queue. Long-press a song (or right-click on a computer) for more options.</li>
     </ol>
     <button class="restart" id="restart" type="button">Restart prototype</button>
@@ -263,13 +263,13 @@ function render(keepScroll){
     <div class="toprow"><button class="circ" type="button" data-act="std" aria-label="Invite friends">${IC.plus}</button><div class="avs"><span class="av avM">M</span><span class="av avJ">J</span><span class="av avK">K</span></div><span style="flex:1"></span><button class="circ" type="button" data-act="std" aria-label="Jam settings">${IC.gear}</button><button class="pillbtn end" type="button" data-act="std">End</button></div></div>
   <div class="qhead"><b>Queue</b><button class="pillbtn" type="button" data-act="clear">Clear</button><button class="pillbtn" type="button" data-act="std">Edit</button></div>
   <div class="list" id="list">
-    ${n?`<div class="skipwrap skipped" id="skipsec"><div class="sec">Skipped (${n}) <span class="hint">tap to play · ⋯ for options</span></div>
+    ${n?`<div class="skipwrap skipped" id="skipsec"><div class="sec">Skipped (${n}) <span class="hint">tap to play, or ⋯ for options</span></div>
       ${S.skipped.map((s,i)=>row(s,{act:"playSkipped",i,more:true,kind:"skipped"})).join("")}</div>`:""}
     <div class="sec" id="nowsec">Now playing</div>
     ${row(S.now,{cls:"now",nowbtn:true})}
     <div class="sec">Next in queue</div>
     ${S.queue.length?S.queue.map((s,i)=>row(s,{act:"tap",i,grip:true,kind:"queue",drag:true})).join(""):`<div class="sec hint" style="text-transform:none;letter-spacing:0">Your queue is empty.</div>`}
-    <div class="sec">Next up: Recommended <span class="hint">(not in your queue)</span></div>
+    <div class="sec">Next up: Recommended</div>
     ${S.rec.map((s,i)=>row(s,{act:"playOutside",i,grip:true,kind:"rec"})).join("")}
     <div aria-hidden="true" style="height:calc(100% - 140px)"></div>
   </div>
@@ -289,10 +289,10 @@ function render(keepScroll){
 }
 function modalHTML(){
   if(modal.type==="skip"){
-    const songs=[S.now,...S.queue.slice(0,modal.i)];
+    const A=[...S.queue,...S.rec]; const songs=[S.now,...A.slice(0,modal.i)];
     return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
       <h4 id="dlgT">Skip ${songs.length} songs?</h4>
-      <p>Playing "${esc(S.queue[modal.i].t)}" now will skip these songs in the shared queue:</p>
+      <p>Playing "${esc(A[modal.i].t)}" now will skip these songs in the shared queue:</p>
       <ul>${songs.map((s,k)=>`<li>${who(s.w)}${esc(s.t)}${k===0?' <span style="color:var(--mute)">(now playing)</span>':""}</li>`).join("")}</ul>
       <div class="dbtns"><button type="button" data-act="cancel">Cancel</button><button type="button" class="go" data-act="confirmSkip">Skip</button></div></div></div>`;
   }
@@ -338,10 +338,12 @@ function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastT
 function snap(){ undoSnap=clone(S); }
 function doSkip(i){
   snap();
-  if(i===0){ S.history.push(S.now); S.now=S.queue.shift(); toast=null; render(false); return; }
-  const skippedNow=[S.now,...S.queue.slice(0,i)];
+  const A=[...S.queue,...S.rec], Q=S.queue.length;
+  if(i===0){ S.history.push(S.now); S.now=A[0]; if(Q) S.queue.shift(); else S.rec.shift(); toast=null; render(false); return; }
+  const skippedNow=[S.now,...A.slice(0,i)];
   S.skipped.push(...skippedNow);
-  S.now=S.queue[i]; S.queue=S.queue.slice(i+1);
+  S.now=A[i];
+  if(i<Q){ S.queue=S.queue.slice(i+1); } else { S.rec=S.rec.slice(i-Q+1); S.queue=[]; }
   revealSkipped=false;
   if(skippedNow.length) showToast(`${skippedNow.length} song${skippedNow.length>1?"s":""} skipped`,true); else toast=null;
   render(false);
@@ -360,9 +362,9 @@ app.addEventListener('click',e=>{
     case "confirmSkip": { const k=modal.i; modal=null; doSkip(k); break; }
     case "undo": if(undoSnap){ S=undoSnap; undoSnap=null; toast=null; clearTimeout(toastTimer); revealSkipped=false; showToast("Queue restored",false); render(false);} break;
     case "reveal": { revealSkipped=true; render(true); const L=app.querySelector('.list'), sk=app.querySelector('#skipsec'); L.scrollTo({top:sk?sk.offsetTop-6:0}); break; }
-    case "playSkipped": { snap(); const s=S.skipped[i]; const back=S.skipped.slice(i+1); S.queue=[...back,S.now,...S.queue]; S.now=s; S.skipped=S.skipped.slice(0,i); showToast(`Playing ${esc(s.t)}. ${back.length+1} song${back.length?"s":""} back in the queue`,true); render(false); break; }
+    case "playSkipped": { snap(); const s=S.skipped[i]; const back=S.skipped.slice(i+1); S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now); S.now=s; S.skipped=S.skipped.slice(0,i); showToast(`Playing ${esc(s.t)}. ${back.length+1} song${back.length?"s":""} back in the queue`,true); render(false); break; }
     case "addBack": { snap(); const s=S.skipped.splice(sheet.i,1)[0]; S.queue.unshift(s); sheet=null; showToast(`Added "${esc(s.t)}" back as next`,true); render(true); break; }
-    case "sheetPlay": { const k=sheet.i; sheet=null; snap(); const s=S.skipped[k]; const back=S.skipped.slice(k+1); S.queue=[...back,S.now,...S.queue]; S.now=s; S.skipped=S.skipped.slice(0,k); showToast(`Playing ${esc(s.t)}`,true); render(false); break; }
+    case "sheetPlay": { const k=sheet.i; sheet=null; snap(); const s=S.skipped[k]; const back=S.skipped.slice(k+1); S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now); S.now=s; S.skipped=S.skipped.slice(0,k); showToast(`Playing ${esc(s.t)}`,true); render(false); break; }
     case "closeSheet": sheet=null; render(true); break;
     case "playHist": { snap(); const h=S.history.splice(i,1)[0]; S.queue.unshift(S.now); S.now=h; showToast(`Playing "${esc(h.t)}" again`,true); render(false); break; }
     case "histAdd": { snap(); const h=S.history[sheet.i]; S.queue.push({...h}); sheet=null; showToast(`Added "${esc(h.t)}" to the queue`,true); render(true); break; }
@@ -370,12 +372,12 @@ app.addEventListener('click',e=>{
     case "removeQ": { snap(); const s=S.queue.splice(sheet.i,1)[0]; sheet=null; showToast(`Removed "${esc(s.t)}"`,true); render(true); break; }
     case "addRec": { snap(); const s={...S.rec[sheet.i],w:"M"}; S.queue.push(s); sheet=null; showToast(`Added "${esc(s.t)}" to the queue`,true); render(true); break; }
     case "std": sheet=null; showToast("Not part of this prototype",false); render(true); break;
-    case "playOutside": if(S.queue.length){ modal={type:"outside",i}; render(true);} else { S.history.push(S.now); S.now=S.rec.splice(i,1)[0]; render(false);} break;
+    case "playOutside": { const k=S.queue.length+i; if(k>=1){ modal={type:"skip",i:k}; render(true);} else doSkip(0); break; }
     case "outsideKeep": { const r=S.rec.splice(modal.i,1)[0]; modal=null; S.history.push(S.now); S.now=r; showToast(`Playing "${esc(r.t)}". Your queue is kept`,false); render(true); break; }
     case "outsideClear": { snap(); const r=S.rec.splice(modal.i,1)[0]; const n=S.queue.length; modal=null; S.history.push(S.now); S.now=r; S.queue=[]; showToast(`Playing "${esc(r.t)}". Cleared ${n} songs`,true); render(true); break; }
     case "prev":
-      if(S.skipped.length){ snap(); S.queue.unshift(S.now); S.now=S.skipped.pop(); showToast(`Brought back "${esc(S.now.t)}" from Skipped`,true); render(false); }
-      else if(S.history.length){ S.queue.unshift(S.now); S.now=S.history.pop(); render(false); }
+      if(S.skipped.length){ snap(); if(S.now.w) S.queue.unshift(S.now); else S.rec.unshift(S.now); S.now=S.skipped.pop(); showToast(`Brought back "${esc(S.now.t)}" from Skipped`,true); render(false); }
+      else if(S.history.length){ if(S.now.w) S.queue.unshift(S.now); else S.rec.unshift(S.now); S.now=S.history.pop(); render(false); }
       break;
     case "next": if(S.queue.length){ S.history.push(S.now); S.now=S.queue.shift(); render(false);} else if(S.rec.length){ S.history.push(S.now); S.now=S.rec.shift(); showToast(`Playing a recommended song: "${esc(S.now.t)}"`,false); render(false);} else { showToast("Nothing left to play",false); render(true);} break;
     case "noop": break;
