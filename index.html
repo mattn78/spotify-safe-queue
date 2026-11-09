@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000"><meta name="color-scheme" content="dark">
 <title>Safe Queue Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
@@ -48,18 +49,14 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .np .bar{margin-top:18px}
 .np .ctrls{gap:26px;margin-top:14px}
 .np .cb{width:56px;height:56px;background:none}
-.np .cb:hover{background:none;opacity:.8}
 .np .cb svg{width:34px;height:34px;fill:var(--txt)}
 .np .cb{flex:none}
 .np .cb.play{width:70px;height:70px;border-radius:50%;flex:none;background:var(--txt);box-shadow:0 6px 18px rgba(0,0,0,.35)}
-.np .cb.play:hover{background:#fff;opacity:1;transform:scale(1.03)}
 .np .cb.play svg{width:30px;height:30px;fill:var(--ink)}
 .np-ctrls .npicon svg{width:26px;height:26px}
-.np-ctrls .npicon:hover{background:none;opacity:.8}
 .np-bottom{margin-top:auto;display:flex;align-items:center;gap:6px}
 .npicon{background:none;border:0;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:20px;color:var(--txt)}
 .npicon svg{width:24px;height:24px}
-.npicon:hover{background:var(--row-hi)}
 .liked{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#000;display:grid;place-items:center;flex:none;margin-left:auto}
 .liked svg{width:16px;height:16px}
 .np-meta .meta{flex:1;min-width:0}
@@ -77,7 +74,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .cb.sm{width:38px;height:38px}.cb.sm svg{width:20px;height:20px}
 .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .actbtn{background:#2a2a2a;border:0;border-radius:12px;padding:12px 0 10px;font:500 13px var(--f-ui);cursor:pointer;display:grid;justify-items:center;gap:6px;color:var(--txt)}
-.actbtn:hover{background:#333}
 .actbtn svg{width:22px;height:22px}
 .circ svg{width:18px;height:18px}
 .ctrls.slim{margin-top:0;gap:36px}
@@ -89,7 +85,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .nowctrls{display:flex;align-items:center;gap:2px;flex:none}
 .nc{width:34px;height:34px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer}
 .nc svg{width:18px;height:18px;fill:var(--txt)}
-.nc:hover{background:var(--row-hi)}
 .ncplay{background:var(--txt)}.ncplay svg{fill:var(--ink)}
 .nowplay{width:34px;height:34px;border-radius:50%;background:var(--txt);color:var(--ink);display:grid;place-items:center;flex:none}
 .nowplay svg{width:16px;height:16px;margin-left:2px}
@@ -104,7 +99,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .sec{font-size:16px;color:var(--txt);padding:16px 8px 8px;font-weight:700;display:flex;align-items:baseline;gap:8px}
 .sec .hint{font-size:13px;font-weight:400;color:var(--mute)}
 .song{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
-.song:hover{background:var(--row)}
 .art{width:42px;height:42px;border-radius:6px;flex:none}
 .meta{flex:1;min-width:0}
 .meta .t{font-size:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -123,11 +117,8 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 @keyframes marq{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--dist))}}
 @media (prefers-reduced-motion: reduce){.now .t.marq span{animation:none}.now .t.marq{text-overflow:ellipsis}}
 .hist .song{opacity:.6}
-.hist .song:hover{opacity:.9}
 .skipped .song{opacity:.55}
-.skipped .song:hover{opacity:.85}
 .more{background:none;border:0;color:var(--mute);font-size:20px;line-height:1;width:34px;height:34px;border-radius:50%;cursor:pointer;flex:none}
-.more:hover{background:var(--row-hi);color:var(--txt)}
 .skipwrap{border:1px dashed var(--line);border-radius:12px;margin:8px 0 2px;padding-bottom:4px}
 .badge{position:absolute;top:150px;left:50%;transform:translateX(-50%);background:var(--warn);color:#241a00;border:0;border-radius:999px;padding:6px 14px;font:700 13px var(--f-ui);cursor:pointer;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.35)}
 .player{background:var(--panel);border-top:1px solid var(--line);padding:10px 18px 16px}
@@ -138,7 +129,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .times{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--mute)}
 .ctrls{display:flex;justify-content:center;align-items:center;gap:30px;margin-top:6px}
 .cb{background:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
-.cb:hover{background:var(--row-hi)}
 .cb svg{width:24px;height:24px;fill:var(--txt)}
 .play{background:var(--txt)}.play:hover{background:#fff}
 .play svg{fill:var(--ink)}
@@ -158,7 +148,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--row);border-radius:18px 18px 0 0;padding:10px 10px 22px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
 .sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
 .sheet .opt{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 12px;font-size:16px;font-weight:600;border-radius:10px;cursor:pointer}
-.sheet .opt:hover{background:var(--row-hi)}
 .sheet .ours{background:var(--row-hi);border-radius:12px;margin:0 2px 8px;padding:2px 0}
 .sheet .ours .opt{color:var(--accent)}
 .sheet .std{font-weight:500;padding:11px 12px;font-size:15px}
@@ -183,7 +172,6 @@ body{margin:0;background:var(--page);color:var(--page-txt);font-family:var(--f-u
 .sec{font-size:15px;font-weight:400;color:var(--mute);padding:14px 0 6px;border-top:1px solid var(--line);margin-top:8px}
 .sec .hint{font-size:13px;color:var(--dim)}
 .song{gap:14px;padding:5px 0;border-radius:0}
-.song:hover{background:none}
 .art{width:48px;height:48px;border-radius:4px}
 .meta .t{font-size:17px;font-weight:400}
 .meta .a{font-size:14px;margin-top:3px;display:flex;align-items:center;gap:5px}
@@ -231,6 +219,37 @@ body.rec .phone{justify-self:center}
   .actbtn{padding:10px 0 8px;gap:4px}
 }
 @media (prefers-reduced-motion: reduce){.list{scroll-behavior:auto}}
+
+/* --- mobile-native fixes (Emil Kowalski's checklist) --- */
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+button,a,[role="button"],.song{touch-action:manipulation}
+button,[role="button"],.grip,.grabbar{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* press feedback on touch (hover is gated below) */
+.song:active{background:var(--row)}
+.app button:active{opacity:.7}
+.restart:active{opacity:.7}
+/* only the handle owns the drag; the header still lets the page scroll */
+.top{touch-action:pan-y}
+.grabbar{touch-action:none}
+@media (max-width:440px){
+  .top{padding-top:calc(4px + env(safe-area-inset-top,0px))}
+  .player{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+}
+@media (hover: hover) and (pointer: fine){
+  .np .cb:hover{background:none;opacity:.8}
+  .np .cb.play:hover{background:#fff;opacity:1;transform:scale(1.03)}
+  .np-ctrls .npicon:hover{background:none;opacity:.8}
+  .npicon:hover{background:var(--row-hi)}
+  .actbtn:hover{background:#333}
+  .nc:hover{background:var(--row-hi)}
+  .song:hover{background:var(--row)}
+  .hist .song:hover{opacity:.9}
+  .skipped .song:hover{opacity:.85}
+  .more:hover{background:var(--row-hi);color:var(--txt)}
+  .cb:hover{background:var(--row-hi)}
+  .sheet .opt:hover{background:var(--row-hi)}
+  .song:hover{background:none}
+}
 </style>
 
 <button class="restart" id="restart2" type="button">Restart</button>
@@ -306,7 +325,7 @@ function renderNow(){
     <div class="ctrls np-ctrls"><button class="npicon" type="button" data-act="std" aria-label="Shuffle">${IC.shuffle}</button><button class="cb" type="button" data-act="prev" aria-label="Previous">${ICON.prev}</button><button class="cb play" type="button" aria-label="Pause">${ICON.pause}</button><button class="cb" type="button" data-act="next" aria-label="Next">${ICON.next}</button><button class="npicon" type="button" data-act="std" aria-label="Repeat">${IC.repeat}</button></div>
     ${n?`<p class="np-hint">⏮ Previous steps back through History (${n} skipped)</p>`:'<p class="np-hint" aria-hidden="true">&nbsp;</p>'}
     <div class="np-bottom"><button class="npicon" type="button" data-act="std" aria-label="Devices">${I2.devices}</button><span style="flex:1"></span><button class="npicon" type="button" data-act="std" aria-label="Share">${I2.share}</button>
-      <button class="qbtn" type="button" data-act="toQueue" aria-label="Open queue"><span class="av avM" style="margin:0;border:0">M</span>${I2.list}${n?`<span class="dot">${n} skipped</span>`:""}</button></div>
+      <button class="qbtn" type="button" data-act="toQueue" aria-label="Open queue"><span class="av avM" style="margin:0;border:0">M</span>${I2.list}</button></div>
   </div>
   ${toast?`<div class="toast np-toast" role="status"><span>${toast.msg}</span>${toast.undo?'<button type="button" data-act="undo">Undo</button>':""}</div>`:""}`;
 }
@@ -340,7 +359,10 @@ function render(keepScroll){
   const L=app.querySelector('.list'); const bd=app.querySelector('.badge'); if(bd) bd.style.top=(L.offsetTop+6)+'px';
   if(keepScroll){ L.style.scrollBehavior='auto'; L.scrollTop=prevTop; L.style.scrollBehavior=''; }
   else { const ns=app.querySelector('#nowsec'); L.style.scrollBehavior='auto'; L.scrollTop=ns?ns.offsetTop-4:0; L.style.scrollBehavior=''; }
-  L.addEventListener('scroll',()=>{ if(skN() && !revealSkipped && L.scrollTop<20){ revealSkipped=true; const b=app.querySelector('.badge'); if(b) b.remove(); } });
+  L.addEventListener('scroll',()=>{ if(!skN() || revealSkipped) return;
+    // hide the badge once a skipped song is on screen (the person has found them)
+    const lt=L.getBoundingClientRect().top, seen=[...app.querySelectorAll('.issk')].some(r=>{const b=r.getBoundingClientRect(); return b.bottom>lt+8 && b.top<L.getBoundingClientRect().bottom;});
+    if(seen || L.scrollTop<20){ revealSkipped=true; const b=app.querySelector('.badge'); if(b) b.remove(); } });
 }
 function modalHTML(){
   if(modal.type==="skip"){
