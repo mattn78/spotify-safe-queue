@@ -389,7 +389,7 @@ function sheetHTML(){
     ${STD}
     <button class="opt std" type="button" data-act="closeSheet">Cancel</button></div>`;
 }
-function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast=null; render(true);},6000); }
+function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast=null; render(true);},undo?12000:5000); }  // Undo stays 12 s so people have time to react
 function snap(){ undoSnap=clone(S); }
 // Tap a History song: play it now. Skipped songs after it return to the queue in order;
 // the song you leave goes to History.
