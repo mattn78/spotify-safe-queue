@@ -392,13 +392,14 @@ function sheetHTML(){
 function showToast(msg,undo){ toast={msg,undo}; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast=null; render(true);},6000); }
 function snap(){ undoSnap=clone(S); }
 // Tap a History song: play it now. Skipped songs after it return to the queue in order;
-// songs that already played stay in History. The song you leave goes back to the top of the queue.
+// the song you leave goes to History.
 function playHistory(k){
-  snap(); const H=S.skipped, s=clean(H[k]), after=H.slice(k+1);
-  const back=after.filter(x=>x.sk).map(clean);
-  S.queue=[...back,...(S.now.w?[S.now]:[]),...S.queue]; if(!S.now.w) S.rec.unshift(S.now);
-  S.skipped=[...H.slice(0,k),...after.filter(x=>!x.sk)]; S.now=s;
-  showToast(back.length?`Playing "${esc(s.t)}". ${back.length} skipped song${back.length>1?"s":""} back in the queue`:`Playing "${esc(s.t)}"`,true); render(false);
+  // Tap a History song: play just that song. Nothing else moves: the queue and the other
+  // History songs stay as they are, and the song you leave goes to History.
+  snap(); const s=clean(S.skipped[k]);
+  S.skipped=S.skipped.filter((_,x)=>x!==k);
+  S.skipped.push(clean(S.now));   // the song you leave goes to History (like tapping the next song)
+  S.now=s; showToast(`Playing "${esc(s.t)}". Your queue is unchanged`,true); render(false);
 }
 function doSkip(i){
   snap();
